@@ -187,7 +187,7 @@
   </div>
 
   <script>
-    // ▼ ここにGASのウェブアプリURLを貼り付けてください
+    // ▼ GASのウェブアプリURL
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxEIh91VHtyuDuOF8IVbW909f0DyrffEmquWa9CW3hFOAIUEAtR1ejypslL4uhUgRc6/exec';
 
     const BUDGETS = {
@@ -207,6 +207,23 @@
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, '0');
       return `${y}-${m}`;
+    }
+
+    function normalizeYearMonth(val) {
+      if (!val) return '';
+      const str = String(val).trim();
+      if (/^\d{4}-\d{2}$/.test(str)) return str;
+
+      const ymdMatch = str.match(/^(\d{4})[-/](\d{1,2})/);
+      if (ymdMatch) {
+        return `${ymdMatch[1]}-${String(ymdMatch[2]).padStart(2, '0')}`;
+      }
+
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+      return str;
     }
 
     function formatYen(num) {
@@ -229,7 +246,12 @@
       try {
         const res = await fetch(`${GAS_URL}?t=${Date.now()}`);
         const json = await res.json();
-        allRecords = Array.isArray(json.records) ? json.records : [];
+        allRecords = Array.isArray(json.records)
+          ? json.records.map(r => ({
+              ...r,
+              yearMonth: normalizeYearMonth(r.yearMonth)
+            }))
+          : [];
         const currentYM = getCurrentYearMonth();
         if (!allRecords.some(r => r.yearMonth === selectedMonth) && selectedMonth !== currentYM) {
           selectedMonth = currentYM;
@@ -246,7 +268,7 @@
     function populateMonthSelect() {
       const select = document.getElementById('monthSelect');
       const currentYM = getCurrentYearMonth();
-      const monthsSet = new Set([currentYM, ...allRecords.map(r => r.yearMonth).filter(Boolean)]);
+      const monthsSet = new Set([currentYM, ...allRecords.map(r => normalizeYearMonth(r.yearMonth)).filter(Boolean)]);
       const months = Array.from(monthsSet).sort().reverse();
       if (!months.includes(selectedMonth)) {
         selectedMonth = currentYM;
@@ -258,7 +280,7 @@
 
     function render() {
       populateMonthSelect();
-      const monthRecords = allRecords.filter(r => r.yearMonth === selectedMonth);
+      const monthRecords = allRecords.filter(r => normalizeYearMonth(r.yearMonth) === selectedMonth);
       const spentByCat = {};
       Object.keys(BUDGETS).forEach(k => { spentByCat[k] = 0; });
 
@@ -266,8 +288,9 @@
       monthRecords.forEach(r => {
         const amt = Number(r.amount) || 0;
         totalSpent += amt;
-        if (spentByCat[r.category] !== undefined) {
-          spentByCat[r.category] += amt;
+        const cat = String(r.category || '').trim();
+        if (spentByCat[cat] !== undefined) {
+          spentByCat[cat] += amt;
         } else {
           spentByCat['雑費'] = (spentByCat['雑費'] || 0) + amt;
         }

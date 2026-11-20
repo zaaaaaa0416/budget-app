@@ -32,7 +32,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
     }
     h1 { font-size: 1.25rem; margin: 0; }
@@ -40,6 +40,28 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      background: var(--card);
+      padding: 6px;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
     }
     select, input, button {
       font-family: inherit;
@@ -135,6 +157,7 @@
     .log-date { font-size: 0.78rem; color: var(--muted); }
     .log-amount { font-weight: 700; white-space: nowrap; }
     .status-msg { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -143,51 +166,97 @@
       <h1>月間予算マネージャー</h1>
       <div class="controls-row">
         <select id="monthSelect" aria-label="対象月"></select>
+        <select id="yearSelect" aria-label="対象年" class="hidden"></select>
         <button id="refreshBtn" class="secondary" type="button">更新</button>
       </div>
     </div>
 
-    <div class="hero">
-      <div class="hero-label">選択月の残り予算（合計予算 ¥91,000）</div>
-      <div id="totalRemaining" class="hero-amount">¥91,000</div>
-      <div class="hero-sub">
-        <span id="totalSpentText">利用額: ¥0</span>
-        <span id="currentMonthBadge">対象月: -</span>
+    <div class="tab-bar" role="tablist">
+      <button id="tabMonthly" class="tab-btn active" type="button" role="tab" aria-selected="true">月間予算</button>
+      <button id="tabSpecial" class="tab-btn" type="button" role="tab" aria-selected="false">特別支出（年枠）</button>
+    </div>
+
+    <!-- 月間予算ビュー -->
+    <div id="monthlyView">
+      <div class="hero">
+        <div class="hero-label">選択月の残り予算（合計予算 ¥91,000）</div>
+        <div id="totalRemaining" class="hero-amount">¥91,000</div>
+        <div class="hero-sub">
+          <span id="totalSpentText">利用額: ¥0 / ¥91,000</span>
+          <span id="currentMonthBadge">対象月: -</span>
+        </div>
+        <div class="bar-wrap">
+          <div id="totalBar" class="bar-fill" style="width: 0%; background: var(--ok);"></div>
+        </div>
       </div>
-      <div class="bar-wrap">
-        <div id="totalBar" class="bar-fill" style="width: 0%; background: var(--ok);"></div>
+
+      <div id="categoryGrid" class="grid"></div>
+
+      <div class="panel">
+        <h2>支出を記録する（月間予算）</h2>
+        <form id="addForm" class="form-grid">
+          <select id="catInput" required>
+            <option value="交際費">交際費（¥30,000）</option>
+            <option value="娯楽費">娯楽費（¥20,000）</option>
+            <option value="雑費">雑費（¥16,000）</option>
+            <option value="食費">食費（¥15,000）</option>
+            <option value="交通費">交通費（¥10,000）</option>
+          </select>
+          <input id="storeInput" type="text" placeholder="店舗・用途（例：スーパー）" required />
+          <input id="amountInput" type="number" min="1" step="1" placeholder="金額（円）" required />
+          <button id="submitBtn" type="submit">記録する</button>
+        </form>
+        <div id="statusMsg" class="status-msg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>選択月の利用履歴</h2>
+        <div id="historyList" class="log-list">
+          <div class="status-msg">データを読み込み中...</div>
+        </div>
       </div>
     </div>
 
-    <div id="categoryGrid" class="grid"></div>
+    <!-- 特別支出（年間46万円枠）ビュー -->
+    <div id="specialView" class="hidden">
+      <div class="hero">
+        <div class="hero-label">年間特別支出の残り予算（年間枠 ¥460,000）</div>
+        <div id="specialRemaining" class="hero-amount">¥460,000</div>
+        <div class="hero-sub">
+          <span id="specialSpentText">年間利用額: ¥0 / ¥460,000</span>
+          <span id="currentYearBadge">対象年: -</span>
+        </div>
+        <div class="bar-wrap">
+          <div id="specialBar" class="bar-fill" style="width: 0%; background: var(--ok);"></div>
+        </div>
+      </div>
 
-    <div class="panel">
-      <h2>支出を記録する</h2>
-      <form id="addForm" class="form-grid">
-        <select id="catInput" required>
-          <option value="交際費">交際費（¥30,000）</option>
-          <option value="娯楽費">娯楽費（¥20,000）</option>
-          <option value="雑費">雑費（¥16,000）</option>
-          <option value="食費">食費（¥15,000）</option>
-          <option value="交通費">交通費（¥10,000）</option>
-        </select>
-        <input id="storeInput" type="text" placeholder="店舗・用途（例：スーパー）" required />
-        <input id="amountInput" type="number" min="1" step="1" placeholder="金額（円）" required />
-        <button id="submitBtn" type="submit">記録する</button>
-      </form>
-      <div id="statusMsg" class="status-msg"></div>
-    </div>
+      <div class="panel">
+        <h2>特別支出を記録する（別財源・年枠）</h2>
+        <form id="specialAddForm" class="form-grid">
+          <select id="specialCatInput" required>
+            <option value="特別支出">特別支出</option>
+            <option value="旅行・レジャー">旅行・レジャー</option>
+            <option value="冠婚葬祭・ギフト">冠婚葬祭・ギフト</option>
+            <option value="大型購入・その他">大型購入・その他</option>
+          </select>
+          <input id="specialStoreInput" type="text" placeholder="内容・用途（例：旅行・家具など）" required />
+          <input id="specialAmountInput" type="number" min="1" step="1" placeholder="金額（円）" required />
+          <button id="specialSubmitBtn" type="submit">特別支出を記録</button>
+        </form>
+        <div id="specialStatusMsg" class="status-msg"></div>
+      </div>
 
-    <div class="panel">
-      <h2>選択月の利用履歴</h2>
-      <div id="historyList" class="log-list">
-        <div class="status-msg">データを読み込み中...</div>
+      <div class="panel">
+        <h2>選択年の特別支出履歴</h2>
+        <div id="specialHistoryList" class="log-list">
+          <div class="status-msg">データを読み込み中...</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // ▼ GASのウェブアプリURL
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxEIh91VHtyuDuOF8IVbW909f0DyrffEmquWa9CW3hFOAIUEAtR1ejypslL4uhUgRc6/exec';
 
     const BUDGETS = {
@@ -198,15 +267,23 @@
       '交通費': 10000
     };
     const TOTAL_BUDGET = Object.values(BUDGETS).reduce((a, b) => a + b, 0);
+    const ANNUAL_SPECIAL_BUDGET = 460000;
 
+    let activeTab = 'monthly';
     let allRecords = [];
+    let allSpecialRecords = [];
     let selectedMonth = getCurrentYearMonth();
+    let selectedYear = getCurrentYear();
 
     function getCurrentYearMonth() {
       const now = new Date();
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, '0');
       return `${y}-${m}`;
+    }
+
+    function getCurrentYear() {
+      return String(new Date().getFullYear());
     }
 
     function normalizeYearMonth(val) {
@@ -226,6 +303,18 @@
       return str;
     }
 
+    function normalizeYear(val, dateStr) {
+      if (val) {
+        const m = String(val).trim().match(/^(\d{4})/);
+        if (m) return m[1];
+      }
+      if (dateStr) {
+        const m = String(dateStr).trim().match(/^(\d{4})/);
+        if (m) return m[1];
+      }
+      return getCurrentYear();
+    }
+
     function formatYen(num) {
       return '¥' + Number(num || 0).toLocaleString('ja-JP');
     }
@@ -234,31 +323,72 @@
       document.getElementById('statusMsg').textContent = msg;
     }
 
+    function setSpecialStatus(msg) {
+      document.getElementById('specialStatusMsg').textContent = msg;
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      const isMonthly = tabName === 'monthly';
+
+      document.getElementById('tabMonthly').classList.toggle('active', isMonthly);
+      document.getElementById('tabMonthly').setAttribute('aria-selected', String(isMonthly));
+      document.getElementById('tabSpecial').classList.toggle('active', !isMonthly);
+      document.getElementById('tabSpecial').setAttribute('aria-selected', String(!isMonthly));
+
+      document.getElementById('monthlyView').classList.toggle('hidden', !isMonthly);
+      document.getElementById('specialView').classList.toggle('hidden', isMonthly);
+
+      document.getElementById('monthSelect').classList.toggle('hidden', !isMonthly);
+      document.getElementById('yearSelect').classList.toggle('hidden', isMonthly);
+
+      render();
+    }
+
     async function loadRecords() {
       if (!GAS_URL || GAS_URL.includes('ここにGASの')) {
         setStatus('GAS_URLが未設定です。HTML内のGAS_URLを書き換えてください。');
+        setSpecialStatus('GAS_URLが未設定です。HTML内のGAS_URLを書き換えてください。');
         render();
         return;
       }
       const btn = document.getElementById('refreshBtn');
       btn.disabled = true;
       setStatus('スプレッドシートから履歴を取得中...');
+      setSpecialStatus('特別支出の履歴を取得中...');
       try {
         const res = await fetch(`${GAS_URL}?t=${Date.now()}`);
         const json = await res.json();
+
         allRecords = Array.isArray(json.records)
           ? json.records.map(r => ({
               ...r,
               yearMonth: normalizeYearMonth(r.yearMonth)
             }))
           : [];
+
+        allSpecialRecords = Array.isArray(json.specialRecords)
+          ? json.specialRecords.map(r => ({
+              ...r,
+              year: normalizeYear(r.year, r.date)
+            }))
+          : [];
+
         const currentYM = getCurrentYearMonth();
         if (!allRecords.some(r => r.yearMonth === selectedMonth) && selectedMonth !== currentYM) {
           selectedMonth = currentYM;
         }
+
+        const currentY = getCurrentYear();
+        if (!allSpecialRecords.some(r => r.year === selectedYear) && selectedYear !== currentY) {
+          selectedYear = currentY;
+        }
+
         setStatus('最新データを反映しました。');
+        setSpecialStatus('最新データを反映しました。');
       } catch (err) {
         setStatus('読み込みに失敗しました。GASの公開設定（全員）やURLを確認してください。');
+        setSpecialStatus('読み込みに失敗しました。GASの公開設定（全員）やURLを確認してください。');
       } finally {
         btn.disabled = false;
         render();
@@ -278,7 +408,20 @@
       ).join('');
     }
 
-    function render() {
+    function populateYearSelect() {
+      const select = document.getElementById('yearSelect');
+      const currentY = getCurrentYear();
+      const yearsSet = new Set([currentY, ...allSpecialRecords.map(r => normalizeYear(r.year, r.date)).filter(Boolean)]);
+      const years = Array.from(yearsSet).sort().reverse();
+      if (!years.includes(selectedYear)) {
+        selectedYear = currentY;
+      }
+      select.innerHTML = years.map(y =>
+        `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}年${y === currentY ? '（今年）' : ''}</option>`
+      ).join('');
+    }
+
+    function renderMonthly() {
       populateMonthSelect();
       const monthRecords = allRecords.filter(r => normalizeYearMonth(r.yearMonth) === selectedMonth);
       const spentByCat = {};
@@ -347,8 +490,58 @@
       }
     }
 
+    function renderSpecial() {
+      populateYearSelect();
+      const yearRecords = allSpecialRecords.filter(r => normalizeYear(r.year, r.date) === selectedYear);
+
+      let totalSpent = 0;
+      yearRecords.forEach(r => {
+        totalSpent += Number(r.amount) || 0;
+      });
+
+      const remaining = ANNUAL_SPECIAL_BUDGET - totalSpent;
+      const ratio = Math.min(100, Math.round((totalSpent / ANNUAL_SPECIAL_BUDGET) * 100));
+
+      document.getElementById('specialRemaining').textContent = formatYen(remaining);
+      document.getElementById('specialRemaining').style.color = remaining < 0 ? 'var(--danger)' : 'var(--text)';
+      document.getElementById('specialSpentText').textContent = `年間利用額: ${formatYen(totalSpent)} / ${formatYen(ANNUAL_SPECIAL_BUDGET)}`;
+      document.getElementById('currentYearBadge').textContent = `対象年: ${selectedYear}年`;
+
+      const bar = document.getElementById('specialBar');
+      bar.style.width = `${ratio}%`;
+      bar.style.background = remaining < 0 ? 'var(--danger)' : (ratio >= 80 ? 'var(--warn)' : 'var(--ok)');
+
+      const list = document.getElementById('specialHistoryList');
+      if (yearRecords.length === 0) {
+        list.innerHTML = '<div class="status-msg">この年の特別支出記録はまだありません。</div>';
+      } else {
+        list.innerHTML = [...yearRecords].reverse().map(r => `
+          <div class="log-item">
+            <div class="log-left">
+              <strong>${r.store || '（内容未入力）'} ・ ${r.category || '特別支出'}</strong>
+              <span class="log-date">${r.date}</span>
+            </div>
+            <span class="log-amount">-${formatYen(r.amount)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function render() {
+      renderMonthly();
+      renderSpecial();
+    }
+
+    document.getElementById('tabMonthly').addEventListener('click', () => switchTab('monthly'));
+    document.getElementById('tabSpecial').addEventListener('click', () => switchTab('special'));
+
     document.getElementById('monthSelect').addEventListener('change', (e) => {
       selectedMonth = e.target.value;
+      render();
+    });
+
+    document.getElementById('yearSelect').addEventListener('change', (e) => {
+      selectedYear = e.target.value;
       render();
     });
 
@@ -372,7 +565,7 @@
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category, store, amount })
+          body: JSON.stringify({ type: 'monthly', category, store, amount })
         });
         document.getElementById('storeInput').value = '';
         document.getElementById('amountInput').value = '';
@@ -380,6 +573,37 @@
         setTimeout(loadRecords, 800);
       } catch (err) {
         setStatus('送信エラーが発生しました。');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('specialAddForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!GAS_URL || GAS_URL.includes('ここにGASの')) {
+        setSpecialStatus('先にGAS_URLを設定してください。');
+        return;
+      }
+      const btn = document.getElementById('specialSubmitBtn');
+      const category = document.getElementById('specialCatInput').value;
+      const store = document.getElementById('specialStoreInput').value.trim();
+      const amount = Number(document.getElementById('specialAmountInput').value);
+
+      btn.disabled = true;
+      setSpecialStatus('送信中...');
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'special', category, store, amount })
+        });
+        document.getElementById('specialStoreInput').value = '';
+        document.getElementById('specialAmountInput').value = '';
+        selectedYear = getCurrentYear();
+        setTimeout(loadRecords, 800);
+      } catch (err) {
+        setSpecialStatus('送信エラーが発生しました。');
       } finally {
         btn.disabled = false;
       }
